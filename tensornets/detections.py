@@ -67,7 +67,9 @@ def __args_rcnn__(is_training):
 @set_args(__args_yolo__)
 def yolov2(x, stem_fn, stem_out=None, is_training=False, classes=21,
            scope=None, reuse=None):
+    inputs = x
     opt = opts('yolov2' + data_name(classes))
+
     def get_boxes(*args, **kwargs):
         return yolo_boxes(opt, *args, **kwargs)
 
@@ -90,7 +92,7 @@ def yolov2(x, stem_fn, stem_out=None, is_training=False, classes=21,
     x.aliases = []
     x.get_boxes = get_boxes
     x.stem = stem
-    x.placeholders = v2_placeholders(opt, x.shape[1:3])
+    x.placeholders = [inputs] + v2_placeholders(opt, x.shape[1:3])
     x.loss = v2_loss(opt, x)
     return x
 
@@ -103,7 +105,9 @@ def data_name(classes):
 @set_args(__args_yolo__)
 def tinyyolov2(x, stem_fn, stem_out=None, is_training=False, classes=21,
                scope=None, reuse=None):
+    inputs = x
     opt = opts('tinyyolov2' + data_name(classes))
+
     def get_boxes(*args, **kwargs):
         return yolo_boxes(opt, *args, **kwargs)
 
@@ -120,7 +124,7 @@ def tinyyolov2(x, stem_fn, stem_out=None, is_training=False, classes=21,
     x.aliases = []
     x.get_boxes = get_boxes
     x.stem = stem
-    x.placeholders = v2_placeholders(opt, x.shape[1:3])
+    x.placeholders = [inputs] + v2_placeholders(opt, x.shape[1:3])
     x.loss = v2_loss(opt, x)
     return x
 

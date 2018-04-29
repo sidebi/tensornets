@@ -22,6 +22,11 @@ try:
 except NameError:
     xrange = range  # Python 3
 
+try:
+    reduce
+except NameError:
+    from functools import reduce
+
 
 with open(os.path.join(os.path.dirname(__file__), 'voc.names'), 'r') as f:
     classnames = [line.rstrip() for line in f.readlines()]

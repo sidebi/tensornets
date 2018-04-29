@@ -159,17 +159,17 @@ def v2_loss(opts, outs):
     ceil  = centers + (wh * .5)
 
     # calculate the intersection areas
-    intersect_upleft   = tf.maximum(floor, outs.placeholders['upleft'])
-    intersect_botright = tf.minimum(ceil , outs.placeholders['botright'])
+    intersect_upleft   = tf.maximum(floor, outs.placeholders[7])
+    intersect_botright = tf.minimum(ceil , outs.placeholders[8])
     intersect_wh = intersect_botright - intersect_upleft
     intersect_wh = tf.maximum(intersect_wh, 0.0)
     intersect = tf.multiply(intersect_wh[:,:,:,0], intersect_wh[:,:,:,1])
 
     # calculate the best IOU, set 0.0 confidence for worse boxes
-    iou = tf.truediv(intersect, outs.placeholders['areas'] + area_pred - intersect)
+    iou = tf.truediv(intersect, outs.placeholders[6] + area_pred - intersect)
     best_box = tf.equal(iou, tf.reduce_max(iou, [2], True))
     best_box = tf.to_float(best_box)
-    confs = tf.multiply(best_box, outs.placeholders['confs'])
+    confs = tf.multiply(best_box, outs.placeholders[2])
 
     # take care of the weight terms
     conid = snoob * (1. - confs) + sconf * confs
@@ -178,8 +178,8 @@ def v2_loss(opts, outs):
     weight_pro = tf.concat(C * [tf.expand_dims(confs, -1)], 3)
     proid = sprob * weight_pro
 
-    fetch = [outs.placeholders['probs'], confs, conid, cooid, proid]
-    true = tf.concat([outs.placeholders['coord'], tf.expand_dims(confs, 3), outs.placeholders['probs'] ], 3)
+    fetch = [outs.placeholders[1], confs, conid, cooid, proid]
+    true = tf.concat([outs.placeholders[3], tf.expand_dims(confs, 3), outs.placeholders[1] ], 3)
     wght = tf.concat([cooid, tf.expand_dims(conid, 3), proid ], 3)
 
     loss = tf.pow(adjusted_net_out - true, 2)
