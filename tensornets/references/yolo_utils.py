@@ -112,18 +112,13 @@ def v2_placeholders(opts, out_shape):
     height, width = out_shape
     size1 = [None, height * width, opts['num'], opts['classes']]
     size2 = [None, height * width, opts['num']]
-    return {
-        # return the below placeholders
-        'probs': tf.placeholder(tf.float32, size1),
-        'confs': tf.placeholder(tf.float32, size2),
-        'coord': tf.placeholder(tf.float32, size2 + [4]),
-        # weights term for L2 loss
-        'proid': tf.placeholder(tf.float32, size1),
-        # material calculating IOU
-        'areas': tf.placeholder(tf.float32, size2),
-        'upleft': tf.placeholder(tf.float32, size2 + [2]),
-        'botright': tf.placeholder(tf.float32, size2 + [2])
-    }
+    return [tf.placeholder(tf.float32, size1),
+            tf.placeholder(tf.float32, size2),
+            tf.placeholder(tf.float32, size2 + [4]),
+            tf.placeholder(tf.float32, size1),
+            tf.placeholder(tf.float32, size2),
+            tf.placeholder(tf.float32, size2 + [2]),
+            tf.placeholder(tf.float32, size2 + [2])]
 
 
 def expit_tensor(x):
