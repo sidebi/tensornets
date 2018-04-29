@@ -1,12 +1,16 @@
 # TensorNets
 
-High level network definitions with pre-trained weights in [TensorFlow](https://github.com/tensorflow/tensorflow) (tested with `>= 1.2.0`).
+High level network definitions with pre-trained weights in [TensorFlow](https://github.com/tensorflow/tensorflow) (tested with `>= 1.1.0`).
 
 ## Guiding principles
 
 - **Applicability.** Many people already have their own ML workflows, and want to put a new model on their workflows. TensorNets can be easily plugged together because it is designed as simple functional interfaces without custom classes.
 - **Manageability.** Models are written in `tf.contrib.layers`, which is lightweight like PyTorch and Keras, and allows for ease of accessibility to every weight and end-point. Also, it is easy to deploy and expand a collection of pre-processing and pre-trained weights.
 - **Readability.** With recent TensorFlow APIs, more factoring and less indenting can be possible. For example, all the inception variants are implemented as about 500 lines of code in [TensorNets](tensornets/inceptions.py) while 2000+ lines in [official TensorFlow models](https://github.com/tensorflow/models/blob/master/research/slim/nets/inception_v3.py).
+
+## Installation
+
+You can install TensorNets from PyPI (`pip install tensornets`) or directly from GitHub (`pip install git+https://github.com/taehoonlee/tensornets.git`).
 
 ## A quick example
 
@@ -25,8 +29,7 @@ assert isinstance(model, tf.Tensor)
 You can load an example image by using `utils.load_img` returning a `np.ndarray` as the NHWC format:
 
 ```python
-from tensornets import utils
-img = utils.load_img('cat.png', target_size=256, crop_size=224)
+img = nets.utils.load_img('cat.png', target_size=256, crop_size=224)
 assert img.shape == (1, 224, 224, 3)
 ```
 
@@ -42,7 +45,7 @@ with tf.Session() as sess:
 You can see the most probable classes:
 
 ```python
-print(utils.decode_predictions(preds, top=2)[0])
+print(nets.utils.decode_predictions(preds, top=2)[0])
 [(u'n02124075', u'Egyptian_cat', 0.28067636), (u'n02127052', u'lynx', 0.16826575)]
 ```
 
@@ -91,37 +94,33 @@ More detection examples such as FasterRCNN on VOC2007 are [here](https://github.
 
 ## Utilities
 
-An example output of `utils.print_summary(model)`:
+Besides `pretrained()` and `preprocess()`, the output `tf.Tensor` provides the following useful methods:
+
+- `get_middles()`: returns a list of all the representative `tf.Tensor` end-points,
+- `get_outputs()`: returns a list of all the `tf.Tensor` end-points,
+- `get_weights()`: returns a list of all the `tf.Tensor` weight matrices,
+- `print_middles()`: prints all the representative end-points,
+- `print_outputs()`: prints all the end-points,
+- `print_weights()`: prints all the weight matrices,
+- `print_summary()`: prints the numbers of layers, weight matrices, and parameters.
+
+
+Example outputs of print methods are:
 
 ```
+>>> model.print_middles()
 Scope: resnet50
-Total layers: 54
-Total weights: 320
-Total parameters: 25,636,712
-```
-
-An example output of `utils.print_weights(model)`:
-
-```
-Scope: resnet50
-conv1/conv/weights:0 (7, 7, 3, 64)
-conv1/conv/biases:0 (64,)
-conv1/bn/beta:0 (64,)
-conv1/bn/gamma:0 (64,)
-conv1/bn/moving_mean:0 (64,)
-conv1/bn/moving_variance:0 (64,)
-conv2/block1/0/conv/weights:0 (1, 1, 64, 256)
-conv2/block1/0/conv/biases:0 (256,)
-conv2/block1/0/bn/beta:0 (256,)
-conv2/block1/0/bn/gamma:0 (256,)
+conv2/block1/out:0 (?, 56, 56, 256)
+conv2/block2/out:0 (?, 56, 56, 256)
+conv2/block3/out:0 (?, 56, 56, 256)
+conv3/block1/out:0 (?, 28, 28, 512)
+conv3/block2/out:0 (?, 28, 28, 512)
+conv3/block3/out:0 (?, 28, 28, 512)
+conv3/block4/out:0 (?, 28, 28, 512)
+conv4/block1/out:0 (?, 14, 14, 1024)
 ...
-```
 
-- `utils.get_weights(model)` returns a list of all the `tf.Tensor` weights as shown in the above
-
-An example output of `utils.print_outputs(model)`:
-
-```
+>>> model.print_outputs()
 Scope: resnet50
 conv1/pad:0 (?, 230, 230, 3)
 conv1/conv/BiasAdd:0 (?, 112, 112, 64)
@@ -135,9 +134,27 @@ conv2/block1/1/conv/BiasAdd:0 (?, 56, 56, 64)
 conv2/block1/1/bn/batchnorm/add_1:0 (?, 56, 56, 64)
 conv2/block1/1/relu:0 (?, 56, 56, 64)
 ...
-```
 
-- `utils.get_outputs(model)` returns a list of all the `tf.Tensor` end-points as shown in the above
+>>> model.print_weights()
+Scope: resnet50
+conv1/conv/weights:0 (7, 7, 3, 64)
+conv1/conv/biases:0 (64,)
+conv1/bn/beta:0 (64,)
+conv1/bn/gamma:0 (64,)
+conv1/bn/moving_mean:0 (64,)
+conv1/bn/moving_variance:0 (64,)
+conv2/block1/0/conv/weights:0 (1, 1, 64, 256)
+conv2/block1/0/conv/biases:0 (256,)
+conv2/block1/0/bn/beta:0 (256,)
+conv2/block1/0/bn/gamma:0 (256,)
+...
+
+>>> model.print_summary()
+Scope: resnet50
+Total layers: 54
+Total weights: 320
+Total parameters: 25,636,712
+```
 
 ## Examples
 
@@ -215,17 +232,17 @@ with tf.Session() as sess:
 
 |              | Top-1       | Top-5       | 10-5        | Size   | Stem   | Speed | References                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 |--------------|-------------|-------------|-------------|--------|--------|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ResNet50](tensornets/resnets.py#L80)             | 25.126      | 7.982       | 6.842       | 25.6M  | 23.6M  | 195.4 | [[paper]](https://arxiv.org/abs/1512.03385) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v1.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/resnet.lua) <br /> [[caffe]](https://github.com/KaimingHe/deep-residual-networks/blob/master/prototxt/ResNet-50-deploy.prototxt) [[keras]](https://github.com/keras-team/keras/blob/master/keras/applications/resnet50.py) |
-| [ResNet101](tensornets/resnets.py#L108)           | 23.580      | 7.214       | 6.092       | 44.7M  | 42.7M  | 311.7 | [[paper]](https://arxiv.org/abs/1512.03385) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v1.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/resnet.lua) <br /> [[caffe]](https://github.com/KaimingHe/deep-residual-networks/blob/master/prototxt/ResNet-101-deploy.prototxt) |
-| [ResNet152](tensornets/resnets.py#L136)           | 23.396      | 6.882       | 5.908       | 60.4M  | 58.4M  | 439.1 | [[paper]](https://arxiv.org/abs/1512.03385) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v1.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/resnet.lua) <br /> [[caffe]](https://github.com/KaimingHe/deep-residual-networks/blob/master/prototxt/ResNet-152-deploy.prototxt) |
-| [ResNet50v2](tensornets/resnets.py#L93)           | 24.526      | 7.252       | 6.012       | 25.6M  | 23.6M  | 209.7 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
-| [ResNet101v2](tensornets/resnets.py#L121)         | 23.116      | 6.488       | 5.230       | 44.7M  | 42.6M  | 326.2 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
-| [ResNet152v2](tensornets/resnets.py#L149)         | 22.236      | 6.080       | 4.960       | 60.4M  | 58.3M  | 455.2 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
-| [ResNet200v2](tensornets/resnets.py#L164)         | 21.714      | 5.848       | 4.830       | 64.9M  | 62.9M  | 618.3 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
-| [ResNeXt50c32](tensornets/resnets.py#L179)        | 22.260      | 6.190       | 5.410       | 25.1M  | 23.0M  | 267.4 | [[paper]](https://arxiv.org/abs/1611.05431) [[torch-fb]](https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua) |
-| [ResNeXt101c32](tensornets/resnets.py#L192)       | 21.270      | 5.706       | 4.842       | 44.3M  | 42.3M  | 427.9 | [[paper]](https://arxiv.org/abs/1611.05431) [[torch-fb]](https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua) |
-| [ResNeXt101c64](tensornets/resnets.py#L205)       | 20.506      | 5.408       | 4.564       | 83.7M  | 81.6M  | 877.8 | [[paper]](https://arxiv.org/abs/1611.05431) [[torch-fb]](https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua) |
-| [WideResNet50](tensornets/resnets.py#L218)        | 21.982      | 6.066       | 5.116       | 69.0M  | 66.9M  | 358.1 | [[paper]](https://arxiv.org/abs/1605.07146) [[torch]](https://github.com/szagoruyko/wide-residual-networks/blob/master/pretrained/wide-resnet.lua) |
+| [ResNet50](tensornets/resnets.py#L85)             | 25.126      | 7.982       | 6.842       | 25.6M  | 23.6M  | 195.4 | [[paper]](https://arxiv.org/abs/1512.03385) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v1.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/resnet.lua) <br /> [[caffe]](https://github.com/KaimingHe/deep-residual-networks/blob/master/prototxt/ResNet-50-deploy.prototxt) [[keras]](https://github.com/keras-team/keras/blob/master/keras/applications/resnet50.py) |
+| [ResNet101](tensornets/resnets.py#L113)           | 23.580      | 7.214       | 6.092       | 44.7M  | 42.7M  | 311.7 | [[paper]](https://arxiv.org/abs/1512.03385) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v1.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/resnet.lua) <br /> [[caffe]](https://github.com/KaimingHe/deep-residual-networks/blob/master/prototxt/ResNet-101-deploy.prototxt) |
+| [ResNet152](tensornets/resnets.py#L141)           | 23.396      | 6.882       | 5.908       | 60.4M  | 58.4M  | 439.1 | [[paper]](https://arxiv.org/abs/1512.03385) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v1.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/resnet.lua) <br /> [[caffe]](https://github.com/KaimingHe/deep-residual-networks/blob/master/prototxt/ResNet-152-deploy.prototxt) |
+| [ResNet50v2](tensornets/resnets.py#L98)           | 24.526      | 7.252       | 6.012       | 25.6M  | 23.6M  | 209.7 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
+| [ResNet101v2](tensornets/resnets.py#L126)         | 23.116      | 6.488       | 5.230       | 44.7M  | 42.6M  | 326.2 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
+| [ResNet152v2](tensornets/resnets.py#L154)         | 22.236      | 6.080       | 4.960       | 60.4M  | 58.3M  | 455.2 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
+| [ResNet200v2](tensornets/resnets.py#L169)         | 21.714      | 5.848       | 4.830       | 64.9M  | 62.9M  | 618.3 | [[paper]](https://arxiv.org/abs/1603.05027) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py) [[torch-fb]](https://github.com/facebook/fb.resnet.torch/blob/master/models/preresnet.lua) |
+| [ResNeXt50c32](tensornets/resnets.py#L184)        | 22.260      | 6.190       | 5.410       | 25.1M  | 23.0M  | 267.4 | [[paper]](https://arxiv.org/abs/1611.05431) [[torch-fb]](https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua) |
+| [ResNeXt101c32](tensornets/resnets.py#L200)       | 21.270      | 5.706       | 4.842       | 44.3M  | 42.3M  | 427.9 | [[paper]](https://arxiv.org/abs/1611.05431) [[torch-fb]](https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua) |
+| [ResNeXt101c64](tensornets/resnets.py#L216)       | 20.506      | 5.408       | 4.564       | 83.7M  | 81.6M  | 877.8 | [[paper]](https://arxiv.org/abs/1611.05431) [[torch-fb]](https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua) |
+| [WideResNet50](tensornets/resnets.py#L232)        | 21.982      | 6.066       | 5.116       | 69.0M  | 66.9M  | 358.1 | [[paper]](https://arxiv.org/abs/1605.07146) [[torch]](https://github.com/szagoruyko/wide-residual-networks/blob/master/pretrained/wide-resnet.lua) |
 | [Inception1](tensornets/inceptions.py#L67)        | 33.160      | 12.324      | 10.246      | 7.0M   | 6.0M   | 165.1 | [[paper]](https://arxiv.org/abs/1409.4842) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/inception_v1.py) [[caffe-zoo]](https://github.com/BVLC/caffe/blob/master/models/bvlc_googlenet/deploy.prototxt) |
 | [Inception2](tensornets/inceptions.py#L105)       | 26.296      | 8.270       | 6.882       | 11.2M  | 10.2M  | 134.3 | [[paper]](https://arxiv.org/abs/1502.03167) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/inception_v2.py) |
 | [Inception3](tensornets/inceptions.py#L143)       | 22.102      | 6.280       | 5.038       | 23.9M  | 21.8M  | 314.6 | [[paper]](https://arxiv.org/abs/1512.00567) [[tf-slim]](https://github.com/tensorflow/models/blob/master/research/slim/nets/inception_v3.py) [[keras]](https://github.com/keras-team/keras/blob/master/keras/applications/inception_v3.py) |
@@ -268,3 +285,18 @@ with tf.Session() as sess:
 | [TinyYOLOv2VOC](tensornets/references/yolos.py#L205)                   | 0.5303 | 16M    | 6.534 | 153.0 | [[paper]](https://arxiv.org/abs/1612.08242) [[darknet]](https://pjreddie.com/darknet/yolov2/) [[darkflow]](https://github.com/thtrieu/darkflow) |
 | [FasterRCNN\_ZF\_VOC](tensornets/references/rcnns.py#L151)               | 0.4466 | 59M    | 241.4 | 3.325 | [[paper]](https://arxiv.org/abs/1506.01497) [[caffe]](https://github.com/rbgirshick/py-faster-rcnn) [[roi-pooling]](https://github.com/deepsense-ai/roi-pooling) |
 | [FasterRCNN\_VGG16\_VOC](tensornets/references/rcnns.py#L187)            | 0.6872 | 137M   | 300.7 | 4.143 | [[paper]](https://arxiv.org/abs/1506.01497) [[caffe]](https://github.com/rbgirshick/py-faster-rcnn) [[roi-pooling]](https://github.com/deepsense-ai/roi-pooling) |
+
+## News 📰
+
+- YOLOv3 for COCO and VOC are released, [4 April 2018](https://github.com/taehoonlee/tensornets/commit/d8b2d8a54dc4b775a174035da63561028deb6624).
+- Generic object detection models for YOLOv2 and FasterRCNN are released, [26 March 2018](https://github.com/taehoonlee/tensornets/commit/67915e659d2097a96c82ba7740b9e43a8c69858d).
+
+## Future work 🔥
+
+- Add training codes.
+- Add image classification models (MobileNetv2, PNASNet).
+- Add object detection models (MaskRCNN, SSD).
+- Add image segmentation models (FCN, UNet).
+- Add image datasets (COCO, OpenImages).
+- Add style transfer examples which can be coupled with any network in TensorNets.
+- Add speech and language models with representative datasets (WaveNet, ByteNet).

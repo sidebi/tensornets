@@ -24,10 +24,13 @@ except ImportError:
 
 __middles__ = 'middles'
 __outputs__ = 'outputs'
-__later_tf_version__ = LooseVersion(tf.__version__) > LooseVersion('1.3.0')
 
 
-if __later_tf_version__:
+def tf_later_than(v):
+    return LooseVersion(tf.__version__) > LooseVersion(v)
+
+
+if tf_later_than('1.3.0'):
     from tensorflow.python.keras._impl.keras.applications.imagenet_utils \
         import decode_predictions
     from tensorflow.python.keras.utils import get_file
@@ -298,6 +301,17 @@ def pretrained_initializer(scope, values):
         warnings.warn('The sizes of symbolic and actual weights do not match. '
                       'Never mind if you are trying to load stem layers only.')
 
+    if scope.dtype == tf.float16:
+        ops = [weights[0].assign(np.asarray(values[0], dtype=np.float16))]
+        for (w, v) in zip(weights[1:-2], values[1:-2]):
+            w.load(np.asarray(v, dtype=np.float16))
+        if weights[-1].shape != values[-1].shape:
+            ops += [w.initializer for w in weights[-2:]]
+        else:
+            for (w, v) in zip(weights[-2:], values[-2:]):
+                w.load(np.asarray(v, dtype=np.float16))
+        return ops
+
     ops = [w.assign(v) for (w, v) in zip(weights[:-2], values[:-2])]
     if weights[-1].shape != values[-1].shape:  # for transfer learning
         ops += [w.initializer for w in weights[-2:]]
@@ -311,7 +325,7 @@ def parse_weights(weights_path, move_rules=None):
     data = np.load(weights_path, encoding='bytes')
     values = data['values']
 
-    if __later_tf_version__:
+    if tf_later_than('1.3.0'):
         for (i, name) in enumerate(data['names']):
             if '/beta' in str(data['names'][i-1]) and '/gamma' in str(name):
                 values[i], values[i-1] = values[i-1], values[i]
@@ -355,7 +369,7 @@ def parse_keras_weights(weights_path, move_rules=None):
             g = f[name]
             w = [n.decode('utf8') for n in g.attrs['weight_names']]
             v = [np.asarray(g[n]) for n in w]
-            if not __later_tf_version__:
+            if not tf_later_than('1.3.0'):
                 if len(v) == 4:
                     w[0], w[1] = w[1], w[0]
                     v[0], v[1] = v[1], v[0]
@@ -381,7 +395,7 @@ def parse_torch_weights(weights_path, move_rules=None):
                 idx = names.index(name)
                 names.insert(idx + loc, names.pop(idx))
 
-    if not __later_tf_version__:
+    if not tf_later_than('1.3.0'):
         for (i, name) in enumerate(names):
             if 'running_mean' in str(name):
                 names[i-1], names[i-2] = names[i-2], names[i-1]
