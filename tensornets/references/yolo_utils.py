@@ -132,7 +132,7 @@ def v2_loss(opts, outs):
     classes = opts['classes']
     anchorboxes = opts['num']
     anchors = np.reshape(opts['anchors'], [1, 1, anchorboxes, 2])
-    _, _probs, _, _coord, _proid, _areas, _upleft, _botright = outs.inputs
+    _, _probs, _confs, _coord, _proid, _areas, _upleft, _botright = outs.inputs
 
     # Extract the coordinate prediction from net.out
     outs = tf.reshape(outs, [-1, H, W, anchorboxes, (5 + classes)])
