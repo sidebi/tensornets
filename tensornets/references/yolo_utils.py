@@ -110,19 +110,14 @@ def get_v2_boxes(opts, outs, source_size, threshold=0.1):
 
 def v2_placeholders(opts, out_shape):
     height, width = out_shape
-    size1 = [None, height * width, opts['num'], opts['classes']]
-    size2 = [None, height * width, opts['num']]
-    return [tf.placeholder(tf.float32, size1),
-            tf.placeholder(tf.float32, size2),
-            tf.placeholder(tf.float32, size2 + [4]),
-            tf.placeholder(tf.float32, size1),
-            tf.placeholder(tf.float32, size2),
-            tf.placeholder(tf.float32, size2 + [2]),
-            tf.placeholder(tf.float32, size2 + [2])]
-
-
-def expit_tensor(x):
-    return 1. / (1. + tf.exp(-x))
+    sizes = [None, height * width, opts['num']]
+    return [tf.placeholder(tf.float32, sizes + [opts['classes']]),
+            tf.placeholder(tf.float32, sizes),
+            tf.placeholder(tf.float32, sizes + [4]),
+            tf.placeholder(tf.float32, sizes + [opts['classes']]),
+            tf.placeholder(tf.float32, sizes),
+            tf.placeholder(tf.float32, sizes + [2]),
+            tf.placeholder(tf.float32, sizes + [2])]
 
 
 def v2_loss(opts, outs):
@@ -132,44 +127,43 @@ def v2_loss(opts, outs):
     scoor = 1.
     H = outs.shape[1].value
     W = outs.shape[2].value
-    B, C = opts['num'], opts['classes']
-    HW = H * W # number of grid cells
-    anchors = opts['anchors']
+    cells = H * W
+    sizes = np.array([[[[W, H]]]], dtype=np.float32)
+    classes = opts['classes']
+    anchorboxes = opts['num']
+    anchors = np.reshape(opts['anchors'], [1, 1, anchorboxes, 2])
+    _, _probs, _, _coord, _proid, _areas, _upleft, _botright = outs.inputs
 
     # Extract the coordinate prediction from net.out
-    net_out_reshape = tf.reshape(outs, [-1, H, W, B, (4 + 1 + C)])
-    coords = net_out_reshape[:, :, :, :, :4]
-    coords = tf.reshape(coords, [-1, H*W, B, 4])
-    adjusted_coords_xy = expit_tensor(coords[:,:,:,0:2])
-    adjusted_coords_wh = tf.sqrt(tf.exp(coords[:,:,:,2:4]) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2]))
-    coords = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3)
+    outs = tf.reshape(outs, [-1, H, W, anchorboxes, (5 + classes)])
+    coords = tf.reshape(outs[:, :, :, :, :4], [-1, cells, anchorboxes, 4])
+    adj_xy = 1. / (1. + tf.exp(-coords[:, :, :, 0:2]))
+    adj_wh = tf.sqrt(tf.exp(coords[:, :, :, 2:4]) * anchors / sizes)
+    adj_c = 1. / (1. + tf.exp(-outs[:, :, :, :, 4]))
+    adj_c = tf.reshape(adj_c, [-1, cells, anchorboxes, 1])
+    adj_prob = tf.reshape(tf.nn.softmax(outs[:, :, :, :, 5:]),
+                          [-1, cells, anchorboxes, classes])
+    adj_outs = tf.concat([adj_xy, adj_wh, adj_c, adj_prob], 3)
 
-    adjusted_c = expit_tensor(net_out_reshape[:, :, :, :, 4])
-    adjusted_c = tf.reshape(adjusted_c, [-1, H*W, B, 1])
-
-    adjusted_prob = tf.nn.softmax(net_out_reshape[:, :, :, :, 5:])
-    adjusted_prob = tf.reshape(adjusted_prob, [-1, H*W, B, C])
-
-    adjusted_net_out = tf.concat([adjusted_coords_xy, adjusted_coords_wh, adjusted_c, adjusted_prob], 3)
-
-    wh = tf.pow(coords[:,:,:,2:4], 2) * np.reshape([W, H], [1, 1, 1, 2])
-    area_pred = wh[:,:,:,0] * wh[:,:,:,1]
-    centers = coords[:,:,:,0:2]
+    coords = tf.concat([adj_xy, adj_wh], 3)
+    wh = tf.pow(coords[:, :, :, 2:4], 2) * sizes
+    area_pred = wh[:, :, :, 0] * wh[:, :, :, 1]
+    centers = coords[:, :, :, 0:2]
     floor = centers - (wh * .5)
-    ceil  = centers + (wh * .5)
+    ceil = centers + (wh * .5)
 
     # calculate the intersection areas
-    intersect_upleft   = tf.maximum(floor, outs.placeholders[7])
-    intersect_botright = tf.minimum(ceil , outs.placeholders[8])
+    intersect_upleft = tf.maximum(floor, _upleft)
+    intersect_botright = tf.minimum(ceil, _botright)
     intersect_wh = intersect_botright - intersect_upleft
     intersect_wh = tf.maximum(intersect_wh, 0.0)
-    intersect = tf.multiply(intersect_wh[:,:,:,0], intersect_wh[:,:,:,1])
+    intersect = tf.multiply(intersect_wh[:, :, :, 0], intersect_wh[:, :, :, 1])
 
     # calculate the best IOU, set 0.0 confidence for worse boxes
-    iou = tf.truediv(intersect, outs.placeholders[6] + area_pred - intersect)
+    iou = tf.truediv(intersect, _areas + area_pred - intersect)
     best_box = tf.equal(iou, tf.reduce_max(iou, [2], True))
     best_box = tf.to_float(best_box)
-    confs = tf.multiply(best_box, outs.placeholders[2])
+    confs = tf.multiply(best_box, _confs)
 
     # take care of the weight terms
     conid = snoob * (1. - confs) + sconf * confs
@@ -178,12 +172,11 @@ def v2_loss(opts, outs):
     weight_pro = tf.concat(C * [tf.expand_dims(confs, -1)], 3)
     proid = sprob * weight_pro
 
-    fetch = [outs.placeholders[1], confs, conid, cooid, proid]
-    true = tf.concat([outs.placeholders[3], tf.expand_dims(confs, 3), outs.placeholders[1] ], 3)
-    wght = tf.concat([cooid, tf.expand_dims(conid, 3), proid ], 3)
+    true = tf.concat([_coord, tf.expand_dims(confs, 3), _probs], 3)
+    wght = tf.concat([cooid, tf.expand_dims(conid, 3), proid], 3)
 
-    loss = tf.pow(adjusted_net_out - true, 2)
+    loss = tf.pow(adj_outs - true, 2)
     loss = tf.multiply(loss, wght)
-    loss = tf.reshape(loss, [-1, H*W*B*(4 + 1 + C)])
+    loss = tf.reshape(loss, [-1, cells * anchorboxes * (5 + classes)])
     loss = tf.reduce_sum(loss, 1)
     return .5 * tf.reduce_mean(loss)
