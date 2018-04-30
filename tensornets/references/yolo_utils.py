@@ -103,19 +103,18 @@ def get_v2_boxes(opts, outs, source_size, threshold=0.1):
     return boxes
 
 
-def v2_placeholders(opts, out_shape):
-    height, width = out_shape
-    sizes = [None, height * width, opts['num']]
-    return [tf.placeholder(tf.float32, sizes + [opts['classes']]),
-            tf.placeholder(tf.float32, sizes),
-            tf.placeholder(tf.float32, sizes + [4]),
-            tf.placeholder(tf.float32, sizes + [opts['classes']]),
-            tf.placeholder(tf.float32, sizes),
-            tf.placeholder(tf.float32, sizes + [2]),
-            tf.placeholder(tf.float32, sizes + [2])]
+def v2_inputs(out_shape, anchors, classes):
+    sizes = [None, np.prod(out_shape), anchors]
+    return [tf.placeholder(tf.float32, sizes + [classes], name='probs'),
+            tf.placeholder(tf.float32, sizes, name='confs'),
+            tf.placeholder(tf.float32, sizes + [4], name='coord'),
+            tf.placeholder(tf.float32, sizes + [classes], name='proid'),
+            tf.placeholder(tf.float32, sizes, name='areas'),
+            tf.placeholder(tf.float32, sizes + [2], name='upleft'),
+            tf.placeholder(tf.float32, sizes + [2], name='botright')]
 
 
-def v2_loss(opts, outs):
+def v2_loss(outs, anchorcoords, classes):
     sprob = 1.
     sconf = 5.
     snoob = 1.
@@ -124,20 +123,19 @@ def v2_loss(opts, outs):
     W = outs.shape[2].value
     cells = H * W
     sizes = np.array([[[[W, H]]]], dtype=np.float32)
-    classes = opts['classes']
-    anchorboxes = opts['num']
-    anchors = np.reshape(opts['anchors'], [1, 1, anchorboxes, 2])
+    anchors = len(anchorcoords) // 2
+    anchorcoords = np.reshape(anchorcoords, [1, 1, anchors, 2])
     _, _probs, _confs, _coord, _proid, _areas, _upleft, _botright = outs.inputs
 
     # Extract the coordinate prediction from net.out
-    outs = tf.reshape(outs, [-1, H, W, anchorboxes, (5 + classes)])
-    coords = tf.reshape(outs[:, :, :, :, :4], [-1, cells, anchorboxes, 4])
+    outs = tf.reshape(outs, [-1, H, W, anchors, (5 + classes)])
+    coords = tf.reshape(outs[:, :, :, :, :4], [-1, cells, anchors, 4])
     adj_xy = 1. / (1. + tf.exp(-coords[:, :, :, 0:2]))
-    adj_wh = tf.sqrt(tf.exp(coords[:, :, :, 2:4]) * anchors / sizes)
+    adj_wh = tf.sqrt(tf.exp(coords[:, :, :, 2:4]) * anchorcoords / sizes)
     adj_c = 1. / (1. + tf.exp(-outs[:, :, :, :, 4]))
-    adj_c = tf.reshape(adj_c, [-1, cells, anchorboxes, 1])
+    adj_c = tf.reshape(adj_c, [-1, cells, anchors, 1])
     adj_prob = tf.reshape(tf.nn.softmax(outs[:, :, :, :, 5:]),
-                          [-1, cells, anchorboxes, classes])
+                          [-1, cells, anchors, classes])
     adj_outs = tf.concat([adj_xy, adj_wh, adj_c, adj_prob], 3)
 
     coords = tf.concat([adj_xy, adj_wh], 3)
@@ -172,6 +170,6 @@ def v2_loss(opts, outs):
 
     loss = tf.pow(adj_outs - true, 2)
     loss = tf.multiply(loss, wght)
-    loss = tf.reshape(loss, [-1, cells * anchorboxes * (5 + classes)])
+    loss = tf.reshape(loss, [-1, cells * anchors * (5 + classes)])
     loss = tf.reduce_sum(loss, 1)
     return .5 * tf.reduce_mean(loss)

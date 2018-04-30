@@ -37,8 +37,8 @@ from ..utils import var_scope
 from .yolo_utils import opts
 from .yolo_utils import get_v3_boxes
 from .yolo_utils import get_v2_boxes
+from .yolo_utils import v2_inputs
 from .yolo_utils import v2_loss
-from .yolo_utils import v2_placeholders
 
 
 def __args__(is_training):
@@ -187,56 +187,60 @@ def yolov3voc(x, is_training=False, scope=None, reuse=None):
 @var_scope('REFyolov2coco')
 @set_args(__args__)
 def yolov2coco(x, is_training=False, scope=None, reuse=None):
+    inputs = x
     opt = opts('yolov2')
+    x = yolo(x, [1, 1, 3, 3, 5, 5], 425, is_training, scope, reuse)
+
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
-    inputs = x
-    x = yolo(x, [1, 1, 3, 3, 5, 5], 425, is_training, scope, reuse)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_placeholders(opt, x.shape[1:3])
-    x.loss = v2_loss(opt, x)
+    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
 
 @var_scope('REFyolov2voc')
 @set_args(__args__)
 def yolov2voc(x, is_training=False, scope=None, reuse=None):
+    inputs = x
     opt = opts('yolov2voc')
+    x = yolo(x, [1, 1, 3, 3, 5, 5], 125, is_training, scope, reuse)
+
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
-    inputs = x
-    x = yolo(x, [1, 1, 3, 3, 5, 5], 125, is_training, scope, reuse)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_placeholders(opt, x.shape[1:3])
-    x.loss = v2_loss(opt, x)
+    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
 
 @var_scope('REFtinyyolov2coco')
 @set_args(__args__)
 def tinyyolov2coco(x, is_training=False, scope=None, reuse=None):
+    inputs = x
     opt = opts('tinyyolov2')
+    x = tinyyolo(x, [512, 425], is_training, scope, reuse)
+
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
-    inputs = x
-    x = tinyyolo(x, [512, 425], is_training, scope, reuse)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_placeholders(opt, x.shape[1:3])
-    x.loss = v2_loss(opt, x)
+    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
 
 @var_scope('REFtinyyolov2voc')
 @set_args(__args__)
 def tinyyolov2voc(x, is_training=False, scope=None, reuse=None):
+    inputs = x
     opt = opts('tinyyolov2voc')
+    x = tinyyolo(x, [1024, 125], is_training, scope, reuse)
+
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
-    inputs = x
-    x = tinyyolo(x, [1024, 125], is_training, scope, reuse)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_placeholders(opt, x.shape[1:3])
-    x.loss = v2_loss(opt, x)
+    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
 
