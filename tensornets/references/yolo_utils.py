@@ -169,7 +169,7 @@ def v2_loss(opts, outs):
     conid = snoob * (1. - confs) + sconf * confs
     weight_coo = tf.concat(4 * [tf.expand_dims(confs, -1)], 3)
     cooid = scoor * weight_coo
-    weight_pro = tf.concat(C * [tf.expand_dims(confs, -1)], 3)
+    weight_pro = tf.concat(classes * [tf.expand_dims(confs, -1)], 3)
     proid = sprob * weight_pro
 
     true = tf.concat([_coord, tf.expand_dims(confs, 3), _probs], 3)
