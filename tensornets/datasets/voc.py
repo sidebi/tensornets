@@ -198,7 +198,7 @@ def evaluate(results, data_dir, data_name, ovthresh=0.5, verbose=True):
 
 
 def load_train(data_dir, data_name,
-               batch_size=16, shuffle=True,
+               batch_size=64, shuffle=True,
                target_size=416, anchors=5, classes=20,
                total_num=None, dtype=np.float32):
     assert cv2 is not None, '`load_train` requires `cv2`.'
@@ -217,7 +217,7 @@ def load_train(data_dir, data_name,
 
     for b in range(0, total_num, batch_size):
         if b + batch_size > total_num:
-            batch_num = total_num - b
+            continue
         else:
             batch_num = batch_size
 
