@@ -195,6 +195,8 @@ def yolov2coco(x, is_training=False, scope=None, reuse=None):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
     x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    if isinstance(is_training, tf.Tensor):
+        x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
@@ -210,6 +212,8 @@ def yolov2voc(x, is_training=False, scope=None, reuse=None):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
     x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    if isinstance(is_training, tf.Tensor):
+        x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
@@ -225,6 +229,8 @@ def tinyyolov2coco(x, is_training=False, scope=None, reuse=None):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
     x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    if isinstance(is_training, tf.Tensor):
+        x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
@@ -240,6 +246,8 @@ def tinyyolov2voc(x, is_training=False, scope=None, reuse=None):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
     x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    if isinstance(is_training, tf.Tensor):
+        x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
     return x
 
