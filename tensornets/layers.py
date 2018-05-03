@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import math
 import tensorflow as tf
 
 from tensorflow.contrib.layers import avg_pool2d
@@ -11,6 +12,9 @@ from tensorflow.contrib.layers import flatten
 from tensorflow.contrib.layers import fully_connected as fc
 from tensorflow.contrib.layers import max_pool2d
 from tensorflow.contrib.layers import separable_conv2d
+
+from tensorflow.python.framework import dtypes
+from tensorflow.python.ops import random_ops
 
 from .ops import leaky_relu
 from .ops import relu
@@ -81,12 +85,21 @@ def sconvbnrelu6(*args, **kwargs):
         return relu6(batch_norm(separable_conv2d(*args, **kwargs)))
 
 
+def _initializer(shape, dtype=dtypes.float32, partition_info=None):
+    n = 1.0
+    for s in shape[:-1]:
+        n *= s
+    return random_ops.random_normal(shape, 0, 1e-2,  # math.sqrt(2.0 / n),
+                                    dtype, seed=None)
+
+
 def darkconv(*args, **kwargs):
     scope = kwargs.pop('scope', None)
     onlyconv = kwargs.pop('onlyconv', False)
     with tf.variable_scope(scope):
         conv_kwargs = {'padding': 'SAME',
                        'activation_fn': None,
+                       'weights_initializer': _initializer,
                        'biases_initializer': None,
                        'scope': 'conv'}
         if onlyconv:
@@ -94,7 +107,7 @@ def darkconv(*args, **kwargs):
         with arg_scope([conv2d], **conv_kwargs):
             x = conv2d(*args, **kwargs)
             if onlyconv: return x
-            x = batch_norm(x, center=False, scale=True,
+            x = batch_norm(x, decay=0.99, center=False, scale=True,
                            epsilon=1e-5, scope='bn')
             x = bias_add(x, scope='bias')
             x = leaky_relu(x, alpha=0.1, name='lrelu')

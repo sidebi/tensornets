@@ -202,22 +202,39 @@ def load_train(data_dir, data_name,
                target_size=416, anchors=5, classes=20,
                total_num=None, dtype=np.float32):
     assert cv2 is not None, '`load_train` requires `cv2`.'
-    files = get_files(data_dir, data_name, total_num)
+    if isinstance(data_dir, list):
+        files = []
+        annotations = {}
+        for d in data_dir:
+            files.append(get_files(d, data_name, total_num))
+            annotations.update(get_annotations(d, files[-1]))
+        dirs = np.concatenate([i * np.ones(len(f), dtype=np.int)
+                               for (i, f) in enumerate(files)])
+        files = reduce(lambda x, y: x + y, files)
+    else:
+        files = get_files(data_dir, data_name, total_num)
+        annotations = get_annotations(data_dir, files)
+        dirs = np.zeros(len(files), dtype=np.int)
+
     total_num = len(files)
+    for f in files:
+        annotations[f] = reduce(lambda x, y: x + y, annotations[f])
 
     if isinstance(target_size, int):
         target_size = (target_size, target_size)
     feature_size = [x // 32 for x in target_size]
     cells = feature_size[0] * feature_size[1]
 
-    if shuffle is True:
-        idx = np.random.permutation(total_num)
-    else:
-        idx = np.arange(total_num)
-
-    for b in range(0, total_num, batch_size):
+    b = 0
+    while True:
+        if b == 0:
+            if shuffle is True:
+                idx = np.random.permutation(total_num)
+            else:
+                idx = np.arange(total_num)
         if b + batch_size > total_num:
-            continue
+            b = 0
+            yield None, None
         else:
             batch_num = batch_size
 
@@ -232,15 +249,15 @@ def load_train(data_dir, data_name,
         botright = np.zeros((batch_num, cells, anchors, 2), dtype=dtype)
 
         for i in range(batch_num):
+            d = data_dir[dirs[idx[b + i]]]
             f = files[idx[b + i]]
-            x = cv2.imread("%s/JPEGImages/%s.jpg" % (data_dir, f))
+            x = cv2.imread("%s/JPEGImages/%s.jpg" % (d, f))
             h, w = x.shape[:2]
             cellx = 1. * w / feature_size[1]
             celly = 1. * h / feature_size[0]
 
             processed_objs = []
-            annots = get_annotations(data_dir, [f])[f]
-            for obj in reduce(lambda x, y: x + y, annots):
+            for obj in annotations[f]:
                 bbox = obj['bbox']
                 centerx = .5 * (bbox[0] + bbox[2])  # xmin, xmax
                 centery = .5 * (bbox[1] + bbox[3])  # ymin, ymax
@@ -281,3 +298,4 @@ def load_train(data_dir, data_name,
             imgs[i] = cv2.resize(x, target_size,
                                  interpolation=cv2.INTER_LINEAR)
         yield imgs, [probs, confs, coord, proid, areas, upleft, botright]
+        b += batch_size
