@@ -91,7 +91,8 @@ def yolov2(x, stem_fn, stem_out=None, is_training=False, classes=21,
         return yolo_boxes(opt, *args, **kwargs)
     x.get_boxes = get_boxes
     x.stem = stem
-    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.inputs = [inputs]
+    x.inputs += v2_inputs(x.shape[1:3], opt['num'], opt['classes'], x.dtype)
     if isinstance(is_training, tf.Tensor):
         x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
@@ -124,7 +125,8 @@ def tinyyolov2(x, stem_fn, stem_out=None, is_training=False, classes=21,
         return yolo_boxes(opt, *args, **kwargs)
     x.get_boxes = get_boxes
     x.stem = stem
-    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.inputs = [inputs]
+    x.inputs += v2_inputs(x.shape[1:3], opt['num'], opt['classes'], x.dtype)
     if isinstance(is_training, tf.Tensor):
         x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])

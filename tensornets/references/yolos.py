@@ -194,7 +194,8 @@ def yolov2coco(x, is_training=False, scope=None, reuse=None):
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.inputs = [inputs]
+    x.inputs += v2_inputs(x.shape[1:3], opt['num'], opt['classes'], x.dtype)
     if isinstance(is_training, tf.Tensor):
         x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
@@ -211,7 +212,8 @@ def yolov2voc(x, is_training=False, scope=None, reuse=None):
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.inputs = [inputs]
+    x.inputs += v2_inputs(x.shape[1:3], opt['num'], opt['classes'], x.dtype)
     if isinstance(is_training, tf.Tensor):
         x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
@@ -228,7 +230,8 @@ def tinyyolov2coco(x, is_training=False, scope=None, reuse=None):
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.inputs = [inputs]
+    x.inputs += v2_inputs(x.shape[1:3], opt['num'], opt['classes'], x.dtype)
     if isinstance(is_training, tf.Tensor):
         x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])
@@ -245,7 +248,8 @@ def tinyyolov2voc(x, is_training=False, scope=None, reuse=None):
     def _get_boxes(*args, **kwargs):
         return get_v2_boxes(opt, *args, **kwargs)
     x.get_boxes = _get_boxes
-    x.inputs = [inputs] + v2_inputs(x.shape[1:3], opt['num'], opt['classes'])
+    x.inputs = [inputs]
+    x.inputs += v2_inputs(x.shape[1:3], opt['num'], opt['classes'], x.dtype)
     if isinstance(is_training, tf.Tensor):
         x.inputs.append(is_training)
     x.loss = v2_loss(x, opt['anchors'], opt['classes'])

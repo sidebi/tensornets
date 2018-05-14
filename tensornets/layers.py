@@ -10,10 +10,11 @@ from tensorflow.contrib.layers import conv2d
 from tensorflow.contrib.layers import dropout
 from tensorflow.contrib.layers import flatten
 from tensorflow.contrib.layers import fully_connected as fc
+from tensorflow.contrib.layers import l2_regularizer as l2
 from tensorflow.contrib.layers import max_pool2d
 from tensorflow.contrib.layers import separable_conv2d
+from tensorflow.contrib.layers import variance_scaling_initializer
 
-from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import random_ops
 
 from .ops import leaky_relu
@@ -85,23 +86,17 @@ def sconvbnrelu6(*args, **kwargs):
         return relu6(batch_norm(separable_conv2d(*args, **kwargs)))
 
 
-def _initializer(shape, dtype=dtypes.float32, partition_info=None):
-    n = 1.0
-    for s in shape[:-1]:
-        n *= s
-    return random_ops.random_normal(shape, 0, 1e-2,  # math.sqrt(2.0 / n),
-                                    dtype, seed=None)
-
-
 def darkconv(*args, **kwargs):
     scope = kwargs.pop('scope', None)
     onlyconv = kwargs.pop('onlyconv', False)
     with tf.variable_scope(scope):
-        conv_kwargs = {'padding': 'SAME',
-                       'activation_fn': None,
-                       'weights_initializer': _initializer,
-                       'biases_initializer': None,
-                       'scope': 'conv'}
+        conv_kwargs = {
+            'padding': 'SAME',
+            'activation_fn': None,
+            'weights_initializer': variance_scaling_initializer(1.53846),
+            'weights_regularizer': l2(5e-4),
+            'biases_initializer': None,
+            'scope': 'conv'}
         if onlyconv:
             conv_kwargs.pop('biases_initializer')
         with arg_scope([conv2d], **conv_kwargs):
