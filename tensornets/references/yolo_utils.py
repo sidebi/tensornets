@@ -103,18 +103,20 @@ def get_v2_boxes(opts, outs, source_size, threshold=0.1):
     return boxes
 
 
-def v2_inputs(out_shape, anchors, classes):
+def v2_inputs(out_shape, anchors, classes, dtype):
     sizes = [None, np.prod(out_shape), anchors]
-    return [tf.placeholder(tf.float32, sizes + [classes], name='probs'),
-            tf.placeholder(tf.float32, sizes, name='confs'),
-            tf.placeholder(tf.float32, sizes + [4], name='coord'),
-            tf.placeholder(tf.float32, sizes + [classes], name='proid'),
-            tf.placeholder(tf.float32, sizes, name='areas'),
-            tf.placeholder(tf.float32, sizes + [2], name='upleft'),
-            tf.placeholder(tf.float32, sizes + [2], name='botright')]
+    return [tf.placeholder(dtype, sizes + [classes], name='probs'),
+            tf.placeholder(dtype, sizes, name='confs'),
+            tf.placeholder(dtype, sizes + [4], name='coord'),
+            tf.placeholder(dtype, sizes + [classes], name='proid'),
+            tf.placeholder(dtype, sizes, name='areas'),
+            tf.placeholder(dtype, sizes + [2], name='upleft'),
+            tf.placeholder(dtype, sizes + [2], name='botright')]
 
 
 def v2_loss(outs, anchorcoords, classes):
+    # Refer to the following darkflow loss
+    # https://github.com/thtrieu/darkflow/blob/master/darkflow/net/yolov2/train.py
     sprob = 1.
     sconf = 5.
     snoob = 1.
@@ -125,7 +127,7 @@ def v2_loss(outs, anchorcoords, classes):
     sizes = np.array([[[[W, H]]]], dtype=np.float32)
     anchors = len(anchorcoords) // 2
     anchorcoords = np.reshape(anchorcoords, [1, 1, anchors, 2])
-    _, _probs, _confs, _coord, _proid, _areas, _upleft, _botright = outs.inputs[:8]
+    _, _probs, _confs, _coord, _proid, _areas, _ul, _br = outs.inputs[:8]
 
     # Extract the coordinate prediction from net.out
     outs = tf.reshape(outs, [-1, H, W, anchors, (5 + classes)])
@@ -146,8 +148,8 @@ def v2_loss(outs, anchorcoords, classes):
     ceil = centers + (wh * .5)
 
     # calculate the intersection areas
-    intersect_upleft = tf.maximum(floor, _upleft)
-    intersect_botright = tf.minimum(ceil, _botright)
+    intersect_upleft = tf.maximum(floor, _ul)
+    intersect_botright = tf.minimum(ceil, _br)
     intersect_wh = intersect_botright - intersect_upleft
     intersect_wh = tf.maximum(intersect_wh, 0.0)
     intersect = tf.multiply(intersect_wh[:, :, :, 0], intersect_wh[:, :, :, 1])
@@ -172,4 +174,4 @@ def v2_loss(outs, anchorcoords, classes):
     loss = tf.multiply(loss, wght)
     loss = tf.reshape(loss, [-1, cells * anchors * (5 + classes)])
     loss = tf.reduce_sum(loss, 1)
-    return .5 * tf.reduce_mean(loss)
+    return .5 * tf.reduce_mean(loss) + tf.losses.get_regularization_loss()

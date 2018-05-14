@@ -15,8 +15,6 @@ from tensorflow.contrib.layers import max_pool2d
 from tensorflow.contrib.layers import separable_conv2d
 from tensorflow.contrib.layers import variance_scaling_initializer
 
-from tensorflow.python.ops import random_ops
-
 from .ops import leaky_relu
 from .ops import relu
 from .ops import relu6

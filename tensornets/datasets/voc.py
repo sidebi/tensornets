@@ -1,12 +1,14 @@
 """Collection of PASCAL VOC utils
 
-The codes were refactored from the original py-faster-rcnn
-(https://github.com/rbgirshick/py-faster-rcnn/blob/master/lib/
-datasets/voc_eval.py). Especially, each part was from the following:
+The codes were refactored from [py-faster-rcnn](https://github.com/
+rbgirshick/py-faster-rcnn/blob/master/lib/datasets/voc_eval.py) and
+[darkflow](https://github.com/thtrieu/darkflow/blob/master/darkflow/
+net/yolov2/data.py). Especially, each part was from the following:
 
-1. get_annotations: parse_rec
-2. evaluate_class: voc_ap
-3. evaluate: voc_eval
+1. get_annotations: parse_rec in py-faster-rcnn
+2. evaluate_class: voc_ap in py-faster-rcnn
+3. evaluate: voc_eval in py-faster-rcnn
+4. load_train: _batch in darkflow
 """
 from __future__ import division
 
